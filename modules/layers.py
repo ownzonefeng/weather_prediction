@@ -786,3 +786,61 @@ class GeneralLearnablePool(GeneralLearnableUnpool):
     def forward(self, inputs):
         output = super().forward(inputs)
         return output, None
+
+
+class GeneralMaxValPool(torch.nn.Module):
+    def __init__(self, remap_matrix: "sparse.coo.coo_matrix"):
+        super().__init__()
+        self.remap_matrix = torch.from_numpy(remap_matrix.toarray().astype(np.float32))
+        
+    def forward(self, x, *args, **kwargs):
+        matrix = self.remap_matrix
+
+        n_batch, n_nodes, n_val = x.shape
+        new_nodes, _ = matrix.shape
+
+        x = x.permute(1, 2, 0).reshape(n_nodes, n_batch * n_val)
+        max_ind_row = GeneralMaxValPool.get_max_val_ind(matrix, x)
+        x_pooled = torch.gather(x, dim=0, index=max_ind_row)
+
+        _, col = np.indices(x_pooled.shape)
+        col = torch.LongTensor(col)
+        col = col.to(max_ind_row.device)
+        nnz_ind = torch.stack([max_ind_row, col], dim=2)
+        nnz_ind = nnz_ind.permute(1, 0, 2).reshape(-1, 2).T
+        nnz_ind.requires_grad_(False)
+
+        x_pooled = x_pooled.reshape(new_nodes, n_val, n_batch).permute(2, 0, 1)
+        return x_pooled, nnz_ind
+    
+    @staticmethod
+    def get_max_val_ind(mat, x_ori):
+        device = x_ori.device
+        mat = mat.detach().cpu()
+        x = x_ori.detach().cpu()
+        
+        mat_unsq = mat.unsqueeze(2)
+        x_unsq = x.unsqueeze(0)
+
+        weighted_val = mat_unsq * x_unsq
+        max_ind_row = torch.argmax(weighted_val, dim=1).detach()
+        max_ind_row = max_ind_row.to(device)
+        return max_ind_row
+
+class GeneralMaxValUnpool(torch.nn.Module):
+    def __init__(self, remap_matrix: "sparse.coo.coo_matrix"):
+        super().__init__()
+        self.remap_matrix = convert_to_torch_sparse(remap_matrix)
+    
+    def forward(self, x, index, *args, **kwargs):
+        matrix = self.remap_matrix
+
+        n_batch, _, n_val = x.shape
+        new_nodes, _ = matrix.shape
+
+        x = x.permute(1, 2, 0).flatten()
+        x_unpooled = torch.zeros([new_nodes, n_batch * n_val], dtype=x.dtype, device=x.device)
+        row, col = index
+        x_unpooled =  torch.index_put(x_unpooled, (row, col), x)
+        x_unpooled = x_unpooled.reshape(new_nodes, n_val, n_batch).permute(2, 0, 1)
+        return x_unpooled

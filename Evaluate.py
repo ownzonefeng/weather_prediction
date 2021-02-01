@@ -1,6 +1,5 @@
 import argparse
 import os
-import sys
 import glob
 import json
 import time
@@ -9,15 +8,16 @@ import xarray as xr
 import torch
 import numpy as np
 
-from modules.full_pipeline import load_data_split, WeatherBenchDatasetXarrayHealpixTemp, create_iterative_predictions_healpix_temp, compute_errors
-from modules.architectures import UNetSpherical
-from modules.test import compute_rmse, compute_error_weight
-from modules.plotting import plot_rmses, plot_general_skills, plot_skillmaps, plot_benchmark_simple
 
 def generate_file_name(path, tag, desc, epoch):
     return "{}{}_{}_epoch_{}.nc".format(path, tag, desc, epoch)
 
 def main(config_file):
+    from modules.full_pipeline import load_data_split, WeatherBenchDatasetXarrayHealpixTemp, create_iterative_predictions_healpix_temp, compute_errors
+    from modules.architectures import UNetSpherical
+    from modules.test import compute_rmse, compute_error_weight
+    from modules.plotting import plot_rmses, plot_general_skills, plot_skillmaps, plot_benchmark_simple
+
     with open(config_file, 'r') as f:
         cfg = json.load(f)
 
@@ -114,7 +114,7 @@ def main(config_file):
         das.append(curr)
         
     pred_merged = xr.merge(das)
-    pred_merged.to_netcdf(pred_filename)
+    # pred_merged.to_netcdf(pred_filename)
 
     # select observations
     obs_curr = obs.isel(time=slice(6, pred_merged.time.shape[0] + 6))

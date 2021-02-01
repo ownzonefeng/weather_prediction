@@ -1,12 +1,13 @@
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID" 
+os.environ["CUDA_VISIBLE_DEVICES"] = '4'
+
 import torch
 from modules.architectures import UNetSpherical
-import os
 import json
 from tqdm import trange
 import numpy as np
 
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID" 
-os.environ["CUDA_VISIBLE_DEVICES"] = '4'
 
 def run(config_path, resolution, nodes, batchsize, iters_num):
     savedir = f'./timing/nodes_{nodes}/'

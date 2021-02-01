@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import torch
 from torch import nn, optim
 
-import modules.architectures as modelArchitectures
+from modules.architectures import UNetSpherical
 from modules.full_pipeline import load_data_split, WeatherBenchDatasetXarrayHealpixTempMultiple
 from modules.loss import WeightedMSELoss
 from modules.test import compute_error_weight
@@ -333,8 +333,7 @@ def main(config_file, load_model=False):
     # generate model
     print('Define model...')
     print('Model name: ', description)
-    modelClass = getattr(modelArchitectures, model)
-    spherical_unet = modelClass(resolution, in_channels=in_features * len_sqce, out_channels=out_features, kernel_size=3, **net_params)
+    spherical_unet = UNetSpherical(resolution, in_channels=in_features * len_sqce, out_channels=out_features, kernel_size=3, **net_params)
 
     # use pretrained model to start training
     if load_model:

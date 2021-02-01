@@ -113,6 +113,10 @@ class PoolUnpoolBlock(torch.nn.Module):
             pool = GeneralMaxAreaPool(pool_mat)
             unpool = GeneralMaxAreaUnpool(pool_mat.T)
             return pool, unpool
+        elif pool_method == 'maxval':
+            pool = GeneralMaxValPool(pool_mat)
+            unpool = GeneralMaxValUnpool(unpool_mat)
+            return pool, unpool
         elif pool_method == 'learn':
             pool = GeneralLearnablePool(pool_mat)
             unpool = GeneralLearnableUnpool(unpool_mat)
