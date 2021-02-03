@@ -1,4 +1,5 @@
 import math
+from collections import Counter
 
 import numpy as np
 from scipy import sparse
@@ -788,57 +789,57 @@ class GeneralLearnablePool(GeneralLearnableUnpool):
         return output, None
 
 
-class GeneralMaxValPool(torch.nn.Module):
-    def __init__(self, remap_matrix: "sparse.coo.coo_matrix"):
-        super().__init__()
-        self.remap_matrix = torch.from_numpy(remap_matrix.toarray().astype(np.float32))
-        
+class GeneralMaxValPool(RemapBlock):
     def forward(self, x, *args, **kwargs):
-        matrix = self.remap_matrix
-
         n_batch, n_nodes, n_val = x.shape
-        new_nodes, _ = matrix.shape
-
+        matrix = self.remap_matrix
+        new_nodes, old_nodes = matrix.shape
+        assert n_nodes == old_nodes, 'remap_matrix.shape[1] != input.shape[1]'
         x = x.permute(1, 2, 0).reshape(n_nodes, n_batch * n_val)
-        max_ind_row = GeneralMaxValPool.get_max_val_ind(matrix, x)
-        x_pooled = torch.gather(x, dim=0, index=max_ind_row)
 
-        _, col = np.indices(x_pooled.shape)
-        col = torch.LongTensor(col)
-        col = col.to(max_ind_row.device)
-        nnz_ind = torch.stack([max_ind_row, col], dim=2)
+        indices = matrix.indices()
+        row, col = indices
+        weights = matrix.values()
+
+        cnt = Counter([i.item() for i in row])
+        kernel_sizes = [cnt[i] for i in sorted(cnt)]
+
+        col = col.repeat(n_batch * n_val, 1).T
+
+        val = torch.gather(x, dim=0, index=col).detach()
+        val.requires_grad_(False)
+        weighted_val = weights.view(-1, 1) * val
+
+        start_row = 0
+        max_val_index = []
+        for k in kernel_sizes:
+            curr = weighted_val[start_row:start_row+k]
+            max_val_index.append(torch.argmax(curr, dim=0) + start_row)
+            start_row += k
+        max_val_index = torch.stack(max_val_index)
+        nnz_row = torch.gather(col, dim=0, index=max_val_index)
+
+        x_pooled = torch.gather(x, dim=0, index=nnz_row)
+
+        _, nnz_col = np.indices(x_pooled.shape)
+        nnz_col = torch.LongTensor(nnz_col).to(nnz_row.device)
+        nnz_ind = torch.stack([nnz_row, nnz_col], dim=2)
         nnz_ind = nnz_ind.permute(1, 0, 2).reshape(-1, 2).T
         nnz_ind.requires_grad_(False)
 
         x_pooled = x_pooled.reshape(new_nodes, n_val, n_batch).permute(2, 0, 1)
+
         return x_pooled, nnz_ind
-    
-    @staticmethod
-    def get_max_val_ind(mat, x_ori):
-        device = x_ori.device
-        mat = mat.detach().cpu()
-        x = x_ori.detach().cpu()
-        
-        mat_unsq = mat.unsqueeze(2)
-        x_unsq = x.unsqueeze(0)
 
-        weighted_val = mat_unsq * x_unsq
-        max_ind_row = torch.argmax(weighted_val, dim=1).detach()
-        max_ind_row = max_ind_row.to(device)
-        return max_ind_row
 
-class GeneralMaxValUnpool(torch.nn.Module):
-    def __init__(self, remap_matrix: "sparse.coo.coo_matrix"):
-        super().__init__()
-        self.remap_matrix = convert_to_torch_sparse(remap_matrix)
-    
+class GeneralMaxValUnpool(RemapBlock):
     def forward(self, x, index, *args, **kwargs):
         matrix = self.remap_matrix
 
         n_batch, _, n_val = x.shape
         new_nodes, _ = matrix.shape
 
-        x = x.permute(1, 2, 0).flatten()
+        x = x.permute(2, 0, 1).flatten()
         x_unpooled = torch.zeros([new_nodes, n_batch * n_val], dtype=x.dtype, device=x.device)
         row, col = index
         x_unpooled =  torch.index_put(x_unpooled, (row, col), x)
