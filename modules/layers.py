@@ -793,6 +793,8 @@ class GeneralMaxValPool(RemapBlock):
     def forward(self, x, *args, **kwargs):
         n_batch, n_nodes, n_val = x.shape
         matrix = self.remap_matrix
+        if not matrix.is_coalesced():
+            matrix = matrix.coalesce()
         new_nodes, old_nodes = matrix.shape
         assert n_nodes == old_nodes, 'remap_matrix.shape[1] != input.shape[1]'
         x = x.permute(1, 2, 0).reshape(n_nodes, n_batch * n_val)
