@@ -11,11 +11,10 @@ import torch
 from torch import nn, optim
 from torch.utils.data import Dataset
 
-from modules.test import (compute_rmse_healpix, compute_relBIAS, compute_rSD, compute_R2, compute_anomalies, 
-                          compute_relMAE, compute_ACC)
 
 def load_data_split(input_dir, train_years, val_years, test_years, chunk_size, standardized=None):
 
+    print(input_dir)
     z500 = xr.open_mfdataset(f'{input_dir}geopotential_500/*.nc', combine='by_coords', \
                                  chunks={'time': chunk_size}).rename({'z': 'z500'})
     t850 = xr.open_mfdataset(f'{input_dir}temperature_850/*.nc', combine='by_coords', \
@@ -34,6 +33,7 @@ def load_data_split(input_dir, train_years, val_years, test_years, chunk_size, s
 
 
     return ds_train, ds_valid, ds_test
+
 
 class WeatherBenchDatasetXarrayHealpixTemp(Dataset):
     
@@ -79,8 +79,8 @@ class WeatherBenchDatasetXarrayHealpixTemp(Dataset):
         self.data = ds.to_array(dim='level', name='Dataset').transpose('time', 'node', 'level')
         self.in_features = self.data.shape[-1]
         
-        self.mean = self.data.mean(('time', 'node')).compute() if mean is None else mean
-        self.std = self.data.std(('time', 'node')).compute() if std is None else std
+        self.mean = self.data.mean(('time', 'node')).compute() if mean is None else mean.to_array(dim='level')
+        self.std = self.data.std(('time', 'node')).compute() if std is None else std.to_array(dim='level')
         
         eps = 0.001 #add to std to avoid division by 0
         
@@ -95,12 +95,11 @@ class WeatherBenchDatasetXarrayHealpixTemp(Dataset):
         # Normalize
 
         if requires_st:
-            self.data = self.data.groupby('time.month') - self.mean.to_array(dim='level')
-            self.data = self.data.groupby('time.month') / self.std.to_array(dim='level')
+            self.data = self.data.groupby('time.month') - self.mean
+            self.data = self.data.groupby('time.month') / self.std
             self.data.compute()
         else:
-            self.data = (self.data - self.mean.to_array(dim='level')) / (
-                        self.std.to_array(dim='level') + eps)
+            self.data = (self.data - self.mean) / (self.std + eps)
         self.data.persist()
         
         self.idxs = np.array(range(self.n_samples))
@@ -185,8 +184,8 @@ class WeatherBenchDatasetXarrayHealpixTempMultiple(Dataset):
         self.data = ds.to_array(dim='level', name='Dataset').transpose('time', 'node', 'level')
         self.in_features = self.data.shape[-1]
 
-        self.mean = self.data.mean(('time', 'node')).compute() if mean is None else mean
-        self.std = self.data.std(('time', 'node')).compute() if std is None else std
+        self.mean = self.data.mean(('time', 'node')).compute() if mean is None else mean.to_array(dim='level')
+        self.std = self.data.std(('time', 'node')).compute() if std is None else std.to_array(dim='level')
 
         eps = 0.001  # add to std to avoid division by 0
 
@@ -199,14 +198,12 @@ class WeatherBenchDatasetXarrayHealpixTempMultiple(Dataset):
             self.n_samples = total_samples - (len_sqce_output + 1) * delta_t - max_lead_time
 
         # Normalize
-
         if requires_st:
-            self.data = self.data.groupby('time.month') - self.mean.to_array(dim='level')
-            self.data = self.data.groupby('time.month') / self.std.to_array(dim='level')
+            self.data = self.data.groupby('time.month') - self.mean
+            self.data = self.data.groupby('time.month') / self.std
             self.data.compute()
         else:
-            self.data = (self.data - self.mean.to_array(dim='level')) / (
-                    self.std.to_array(dim='level') + eps)
+            self.data = (self.data - self.mean) / (self.std + eps)
         self.data.persist()
 
         self.idxs = np.array(range(self.n_samples))
@@ -650,17 +647,14 @@ def create_iterative_predictions_healpix_temp(model, device, dg, constants):
     
     out_feat = dg.out_features
     
-    train_std =  dg.std[['z500','t850']].to_array().values #dg.std.values[:out_feat]
-    train_mean = dg.mean[['z500','t850']].to_array().values #dg.mean.values[:out_feat]
+    train_std =  dg.std.values[:2]
+    train_mean = dg.mean.values[:2]
     
     delta_t = dg.delta_t
     len_sqce = dg.len_sqce
     max_lead_time = dg.max_lead_time
-    initial_lead_time = delta_t * len_sqce
     nodes = dg.nodes
-    nside = int(np.sqrt(nodes/12))
-    n_samples = dg.n_samples
-    in_feat = 2#dg.in_features
+    initial_lead_time = delta_t * len_sqce
     total_feat = 7
     num_constants = constants.shape[1]
     
@@ -669,8 +663,6 @@ def create_iterative_predictions_healpix_temp(model, device, dg, constants):
     # Lead times
     lead_times = np.arange(delta_t, max_lead_time + delta_t, delta_t)
     
-    # Lat lon coordinates
-    out_lon, out_lat = hp.pix2ang(nside, np.arange(nodes), lonlat=True)
     
     # Actual times
     start = np.datetime64(dg.years[0], 'h') + np.timedelta64(initial_lead_time, 'h')
@@ -745,7 +737,7 @@ def create_iterative_predictions_healpix_temp(model, device, dg, constants):
         
     predictions = np.array(predictions)
     
-    return predictions, lead_times, times, nodes, out_lat, out_lon
+    return predictions, lead_times, times
 
 def _inner(x, y):
     result = np.matmul(x[..., np.newaxis, :], y[..., :, np.newaxis])
@@ -797,7 +789,7 @@ def compute_errors(pred, obs):
     print('time rsd map ', t10 - t9)
 
     rmse = np.sqrt(((error) ** 2).mean(dims))
-    rmse_map = rmse.drop('lat').drop('lon').load()
+    rmse_map = rmse.load()
 
     t11 = time.time()
     print('time rmse map ', t11 - t10)
@@ -812,7 +804,7 @@ def compute_errors(pred, obs):
     rsd_map = compute_rSD(pred, obs, dims=('time'))
     t3 = time.time()
     print('time rsd_map ', t3 - t2)
-    rmse_map = compute_rmse_healpix(pred, obs, dims=('time'))
+    rmse_map = compute_rmse(pred, obs, dims=('time'))
     t4 = time.time()
     print('time rmse map ', t4 - t3)
     """

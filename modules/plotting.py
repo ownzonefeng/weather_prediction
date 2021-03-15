@@ -56,10 +56,10 @@ def plot_rmses(rmse, reference_rmse, lead_time, max_lead_time=120):
     f, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 4))
     
     lead_times = np.arange(lead_time, max_lead_time + lead_time, lead_time)
-    ax1.plot(lead_times, rmse.z.values, label='Spherical Weyn')
-    ax1.plot(lead_times, reference_rmse.z.values, label='Actual Weyn')
-    ax2.plot(lead_times, rmse.t.values, label='Spherical Weyn')
-    ax2.plot(lead_times, reference_rmse.t.values, label='Actual Weyn')
+    ax1.plot(lead_times, rmse.z.values, label='Ours')
+    ax1.plot(lead_times, reference_rmse.z.values, label='Weyn et al.')
+    ax2.plot(lead_times, rmse.t.values, label='Ours')
+    ax2.plot(lead_times, reference_rmse.t.values, label='Weyn et al.')
     ax1.set_xlabel('Lead time (h)')
     ax1.set_xticks(lead_times)
     ax2.set_xticks(lead_times)
@@ -207,7 +207,7 @@ def plot_benchmark(rmses_spherical, model_description, lead_times, input_dir, ou
     axs[1].legend(loc='upper left', fontsize=15)
     
     
-    filename = model_description + '_benchmark.png'
+    filename = model_description + '_benchmark.pdf'
     
     plt.tight_layout()
     plt.savefig(output_dir + filename, bbox_inches='tight')
@@ -237,7 +237,7 @@ def plot_benchmark_simple(rmses_spherical, model_description, lead_times, input_
     
     # RMSE baselines
     
-    rmses_weyn = xr.open_dataset(input_dir + 'rmses_weyn.nc').rename({'z500':'z', 't850':'t'})
+    rmses_weyn = xr.open_dataset('/nfs_home/wefeng/obs/rmses_weyn.nc').rename({'z500':'z', 't850':'t'})
     
     f, axs = plt.subplots(1, 2, figsize=(17, 6))
     if title:
@@ -272,7 +272,7 @@ def plot_benchmark_simple(rmses_spherical, model_description, lead_times, input_
 
 
     if not filename:
-        filename = model_description + '_benchmark.png'
+        filename = model_description + '_benchmark.pdf'
     
     plt.tight_layout()
     plt.savefig(output_dir + filename, bbox_inches='tight')
@@ -344,7 +344,7 @@ def plot_benchmark_MAE(rmses_spherical, model_description, lead_times, input_dir
     axs[1].legend(loc='upper left', fontsize=15)
     
     
-    filename = model_description + '_mae_benchmark.png'
+    filename = model_description + '_mae_benchmark.pdf'
     
     plt.tight_layout()
     plt.savefig(output_dir + filename, bbox_inches='tight')
@@ -415,7 +415,7 @@ def plot_benchmark_ACC(rmses_spherical, model_description, lead_times, input_dir
     axs[1].legend(loc='lower left', fontsize=15)
     
     
-    filename = model_description + '_benchmark.png'
+    filename = model_description + '_benchmark.pdf'
     
     plt.tight_layout()
     plt.savefig(output_dir + filename, bbox_inches='tight')
@@ -512,12 +512,14 @@ def plot_general_skills(rmse_map, corr_map, rbias_map, rsd_map, model_descriptio
     
     axs[3, 0].set_xlabel('Forecast time [hours]', fontsize=20)
     axs[3, 1].set_xlabel('Forecast time [hours]', fontsize=20)
+    axs[3, 0].set_xticks(np.arange(1, n_ticks+1, 1))
     axs[3, 0].set_xticklabels(xlabels, fontsize=16)
+    axs[3, 1].set_xticks(np.arange(1, n_ticks+1, 1))
     axs[3, 1].set_xticklabels(xlabels, fontsize=16)
     
     plt.tight_layout()
 
-    filename = model_description + '_general_skills.png'
+    filename = model_description + '_general_skills.pdf'
     plt.savefig(output_dir + filename, bbox_inches='tight')
     
     plt.show()
@@ -577,7 +579,7 @@ def plot_skillmaps(rmse_map, rsd_map, rbias_map, corr_map, model_description, le
 
 
         f.tight_layout(pad=-2)
-        filename = model_description + '_' + str(i) + '_maps.png'
+        filename = model_description + '_' + str(i) + '_maps.pdf'
         plt.savefig(output_dir + filename, bbox_inches='tight')
 
         plt.show()
@@ -695,7 +697,7 @@ def plot_general_skills(rmse, corr, rbias, rsd, model_description, lead_times,
     axs[3, 1].set_ylim([0.8, 1.2])
     axs[3, 1].set_xlabel('Forecast time [days]', fontsize=16)
 
-    filename = model_description + '_general_skills.png'
+    filename = model_description + '_general_skills.pdf'
     plt.savefig(output_dir + filename, bbox_inches='tight')
 
     plt.show()
@@ -786,7 +788,7 @@ def plot_general_skills_boxplot(rmse_map, corr_map, rbias_map, rsd_map, model_de
     axs[3, 1].set_ylim([0.25, 1.75])
     axs[3, 1].set_xlabel('Forecast time [days]', fontsize=16)
 
-    filename = model_description + '_general_skills_boxplot.png'
+    filename = model_description + '_general_skills_boxplot.pdf'
     plt.savefig(output_dir + filename, bbox_inches='tight')
 
     plt.show()
@@ -840,7 +842,7 @@ def plot_skillmaps(rsd_map, rbias_map, corr_map, model_description, lead_times, 
         axs[2, 1].set_title('R2 T850', fontsize=fontsize)
 
         f.tight_layout(pad=-2)
-        filename = model_description + '_' + str(i) + '_maps.png'
+        filename = model_description + '_' + str(i) + '_maps.pdf'
         plt.savefig(output_dir + filename, bbox_inches='tight')
 
         plt.show()
@@ -994,7 +996,7 @@ def assess_month(pred, valid, skill_name, model_description, lead_time, save_pat
         vmin_t, vmax_t = 1 - max(abs(1 - vmin_t), abs(vmax_t - 1)), 1 + max(abs(1 - vmin_t), abs(vmax_t - 1))
     
     title = "Monthly evaluation of " + skill_name + " for a {} h lead time".format(lead_time)                        
-    filename = save_path + "_".join(["MonthlySummary", skill_name, model_description, str(lead_time)]) + ".png"
+    filename = save_path + "_".join(["MonthlySummary", skill_name, model_description, str(lead_time)]) + ".pdf"
     
     
     # Plot
@@ -1052,7 +1054,7 @@ def assess_season(pred, valid, skill_name, model_description, lead_time, save_pa
         vmin_t, vmax_t = 1 - max(abs(1 - vmin_t), abs(vmax_t - 1)), 1 + max(abs(1 - vmin_t), abs(vmax_t - 1))
     
     title = "Seasonal evaluation of " + skill_name + " for a {} h lead time".format(lead_time)                        
-    filename = save_path + "_".join(["SeasonalSummary", skill_name, model_description, str(lead_time)]) + ".png"
+    filename = save_path + "_".join(["SeasonalSummary", skill_name, model_description, str(lead_time)]) + ".pdf"
     
     
     # Plot
@@ -1096,7 +1098,7 @@ def assess_seasonal_cycle(pred, valid, model_description, lead_time, save_path):
     valid = valid.groupby('time.month').mean().rename({'month':'time'})
     
     title = "Model's seasonal cycle evaluation for a {} h lead time".format(lead_time)                         
-    filename = save_path + "_".join(["SeasonalCycle", model_description, str(lead_time)]) + ".png"
+    filename = save_path + "_".join(["SeasonalCycle", model_description, str(lead_time)]) + ".pdf"
     
     plot_evaluation(pred, valid, title, filename, acc=False)
     
@@ -1122,7 +1124,7 @@ def assess_daily_cycle(pred, valid, model_description, lead_time, save_path):
     valid = valid.groupby('time.hour').mean().rename({'hour': 'time'})
     
     title = "Model's daily cycle evaluation for a {} h lead time".format(lead_time)
-    filename = save_path + "_".join(["DailyCycle", model_description, str(lead_time)]) + ".png"
+    filename = save_path + "_".join(["DailyCycle", model_description, str(lead_time)]) + ".pdf"
     
     plot_evaluation(pred, valid, title, filename, acc=False)
 
@@ -1150,6 +1152,6 @@ def assess_globally(pred, valid, model_description, lead_time, save_path):
     """
     
     title = "Model's global evaluation for a {} h lead time".format(lead_time)
-    filename = save_path + "_".join(["GlobalSummary", model_description, str(lead_time)]) + ".png"
+    filename = save_path + "_".join(["GlobalSummary", model_description, str(lead_time)]) + ".pdf"
     
     plot_evaluation(pred, valid, title, filename)
