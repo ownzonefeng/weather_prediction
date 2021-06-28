@@ -1,11 +1,14 @@
+_Please see the excellent upgrade [__deepsphere-weather__](https://github.com/deepsphere/deepsphere-weather), a scalable and flexible framework to apply convolutions on spherical unstructured grids for weather/climate applications._
+
 # Geometric deep learning for medium-range weather prediction
 
-[Icíar Lloréns Jover][illorens], [Michaël Defferrard][mdeff], [Gionata Ghiggi][gg], [Natalie Bolón Brun][nbolon]
+[Wentao Feng][wf], [Michaël Defferrard][mdeff], [Gionata Ghiggi][gg], [Icíar Lloréns Jover][illorens], [Natalie Bolón Brun][nbolon]
 
 [illorens]: https://www.linkedin.com/in/iciar-llorens-jover/
 [mdeff]: http://deff.ch
 [gg]: https://people.epfl.ch/gionata.ghiggi
 [nbolon]: https://www.linkedin.com/in/nataliebolonbrun/
+[wf]: https://www.linkedin.com/in/wentaofeng
 
 The code in this repository provides a framework for a deep learning medium range weather prediction method based on graph spherical convolutions. 
 
@@ -27,8 +30,9 @@ Ours Sep 2020 | 61.58 | 0.7110 | 680.024 | 2.901
 
 
 
-Ressources:
-* **Report and slides**: [Geometric deep learning for medium-range weather prediction][info_link]
+Resources:
+- [Geometric deep learning for medium-range weather prediction][info_link]
+- [Probabilistic Deep Learning on Spheres for Weather/Climate Applications](https://infoscience.epfl.ch/record/282285)
 
 [info_link]: https://infoscience.epfl.ch/record/278138/
 
@@ -40,7 +44,7 @@ For a local installation, follow the below instructions.
 
 1. Clone this repository.
    ```sh
-   git clone https://github.com/natbolon/weather_prediction.git
+   git clone git@github.com:ownzonefeng/weather_prediction.git
    cd weather_prediction
    ```
 
